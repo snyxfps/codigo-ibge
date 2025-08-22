@@ -5,33 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>IBGE – Códigos de Municípios</title>
   <style>
-    :root{
-      --radius:16px; --shadow:0 8px 30px rgba(0,0,0,.08);
+    :root {
+      --radius: 16px;
+      --shadow: 0 8px 30px rgba(0, 0, 0, .08);
     }
-    *{box-sizing:border-box}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif;margin:0;line-height:1.35;background:#0b1020;color:#e7e9ee}
-    .wrap{max-width:980px;margin:0 auto;padding:32px}
-    header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px}
-    h1{font-size:clamp(20px,3.5vw,28px);margin:0}
-    .card{background:#121832;border:1px solid #1f2947;border-radius:var(--radius);box-shadow:var(--shadow)}
-    .search{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid #1f2947}
-    .search input{width:100%;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid #2b355a;background:#0d142b;color:#fff;outline:none}
-    .search input:focus{border-color:#3e63ff;box-shadow:0 0 0 3px rgba(62,99,255,.25)}
-    .hint{opacity:.8;font-size:13px}
-    .results{padding:8px 6px}
-    .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px 10px;border-radius:12px}
-    .row:hover{background:#0d142b}
-    .muni{font-weight:600}
-    .estado{opacity:.9}
-    .codigo{font-variant-numeric:tabular-nums;background:#0d142b;border:1px solid #2b355a;border-radius:10px;padding:8px 10px}
-    button.copy{border:1px solid #2b355a;background:#121a38;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
-    button.copy:hover{border-color:#3e63ff}
-    .footer{padding:14px 16px;border-top:1px solid #1f2947;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-    .toast{position:fixed;inset:auto 0 20px 0;display:flex;justify-content:center;pointer-events:none}
-    .toast > div{background:#0f1a33;color:#d8e2ff;padding:10px 14px;border-radius:12px;border:1px solid #2b355a;box-shadow:var(--shadow);opacity:0;transform:translateY(20px);transition:.25s}
-    .toast.show > div{opacity:1;transform:translateY(0)}
-    .badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid #2b355a;border-radius:999px;background:#0d142b}
-    a{color:#9bb3ff}
+    * { box-sizing: border-box }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Ubuntu, Arial, sans-serif;
+      margin: 0;
+      line-height: 1.35;
+      background: #0b1020;
+      color: #e7e9ee;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px }
+    header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    h1 { font-size: clamp(20px, 3.5vw, 28px); margin: 0 }
+    .card {
+      background: #121832;
+      border: 1px solid #1f2947;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .search {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid #1f2947;
+    }
+    .search input {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #2b355a;
+      background: #0d142b;
+      color: #fff;
+      outline: none;
+    }
+    .search input:focus {
+      border-color: #3e63ff;
+      box-shadow: 0 0 0 3px rgba(62, 99, 255, .25);
+    }
+    .hint { opacity: .8; font-size: 13px }
+    .results { padding: 8px 6px }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 10px;
+      border-radius: 12px;
+    }
+    .row:hover { background: #0d142b }
+    .muni { font-weight: 600 }
+    .estado { opacity: .9 }
+    .codigo {
+      font-variant-numeric: tabular-nums;
+      background: #0d142b;
+      border: 1px solid #2b355a;
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+    button.copy {
+      border: 1px solid #2b355a;
+      background: #121a38;
+      color: #fff;
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    button.copy:hover { border-color: #3e63ff }
+    .footer {
+      padding: 14px 16px;
+      border-top: 1px solid #1f2947;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .toast {
+      position: fixed;
+      inset: auto 0 20px 0;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .toast > div {
+      background: #0f1a33;
+      color: #d8e2ff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #2b355a;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: .25s;
+    }
+    .toast.show > div {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .badge {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border: 1px solid #2b355a;
+      border-radius: 999px;
+      background: #0d142b;
+    }
+    a { color: #9bb3ff }
   </style>
 </head>
 <body>
@@ -63,9 +155,9 @@
   <script>
     const deb = (fn, ms = 120) => {
       let t;
-      return (...args) => {
+      return (...a) => {
         clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
+        t = setTimeout(() => fn(...a), ms);
       };
     };
     const norm = s => (s || "").normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase();
@@ -77,11 +169,9 @@
         if (!res.ok) throw new Error('fetch-failed');
         DATA = await res.json();
       } catch (e) {
-        console.warn('Falha ao carregar ibge_municipios.json. Use um servidor local ou coloque o JSON no mesmo diretório.');
-        document.querySelector('.footer')
-          .insertAdjacentHTML('beforeend',
-            '<div style="opacity:.8">Dica: abra com um servidor (ex.: VSCode Live Server) para carregar o JSON.</div>'
-          );
+        console.warn('Falha ao carregar ibge_municipios.json. Abra este arquivo via um servidor local.');
+        document.querySelector('.footer').insertAdjacentHTML('beforeend',
+          '<div style="opacity:.8">Dica: para uso local, abra com um servidor (ex.: VSCode Live Server).</div>');
       }
       render("");
     }
@@ -96,9 +186,18 @@
       }
 
       const nq = norm(q);
-      const out = DATA
-        .filter(r => norm(r.municipio).includes(nq))
-        .slice(0, 50);
+      let out;
+
+      if (nq === "") {
+        out = DATA.slice(0, 50);
+      } else {
+        const exact = DATA.filter(r => norm(r.municipio) === nq);
+        if (exact.length) {
+          out = exact;
+        } else {
+          out = DATA.filter(r => norm(r.municipio).includes(nq)).slice(0, 50);
+        }
+      }
 
       if (!out.length) {
         box.innerHTML = '<div class="row">Nenhum município encontrado com esse nome.</div>';
@@ -142,7 +241,8 @@
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const first = document.querySelector('#results .row .codigo');
+        const box = document.getElementById('results');
+        const first = box.querySelector('.row .codigo');
         if (first) {
           const code = first.textContent.trim();
           navigator.clipboard.writeText(code).then(() => toast('Código ' + code + ' copiado'));
