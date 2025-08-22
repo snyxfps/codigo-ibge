@@ -11,7 +11,7 @@
     }
     * { box-sizing: border-box }
     body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Ubuntu, Arial, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Inter, Ubuntu, Arial, sans-serif;
       margin: 0;
       line-height: 1.35;
       background: #0b1020;
@@ -135,8 +135,16 @@
 
     <div class="card">
       <div class="search">
-        <input id="q" type="search" placeholder="Digite o nome da cidade…" autocomplete="off" autofocus />
-        <div class="hint">Digite para pesquisar. Enter copia o 1º resultado.</div>
+        <input
+          id="q"
+          type="search"
+          placeholder="Digite o nome da cidade…"
+          autocomplete="off"
+          autofocus
+        />
+        <div class="hint">
+          Digite para pesquisar. Se existir correspondência exata, só ela aparece.
+        </div>
       </div>
       <div id="results" class="results" role="listbox" aria-label="Resultados"></div>
       <div class="footer">
@@ -155,58 +163,73 @@
   <script>
     const deb = (fn, ms = 120) => {
       let t;
-      return (...a) => {
+      return (...args) => {
         clearTimeout(t);
-        t = setTimeout(() => fn(...a), ms);
+        t = setTimeout(() => fn(...args), ms);
       };
     };
-    const norm = s => (s || "").normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase();
+    const norm = s =>
+      (s || "")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}+/gu, "")
+        .toLowerCase();
 
     let DATA = [];
     async function load() {
       try {
-        const res = await fetch('ibge_municipios.json');
-        if (!res.ok) throw new Error('fetch-failed');
+        const res = await fetch("ibge_municipios.json");
+        if (!res.ok) throw new Error("fetch-failed");
         DATA = await res.json();
-      } catch (e) {
-        console.warn('Falha ao carregar ibge_municipios.json. Abra este arquivo via um servidor local.');
-        document.querySelector('.footer').insertAdjacentHTML('beforeend',
-          '<div style="opacity:.8">Dica: para uso local, abra com um servidor (ex.: VSCode Live Server).</div>');
+      } catch {
+        console.warn(
+          "Falha ao carregar ibge_municipios.json. Rode via servidor local."
+        );
+        document
+          .querySelector(".footer")
+          .insertAdjacentHTML(
+            "beforeend",
+            '<div style="opacity:.8">Dica: use Live Server ou http-server.</div>'
+          );
       }
       render("");
     }
 
     function render(q) {
-      const box = document.getElementById('results');
-      box.innerHTML = '';
+      const box = document.getElementById("results");
+      box.innerHTML = "";
 
       if (!DATA.length) {
-        box.innerHTML = '<div class="row">Dados não carregados. Baixe o JSON e hospede junto do HTML.</div>';
+        box.innerHTML =
+          '<div class="row">Dados não carregados. Hospede JSON junto ao HTML.</div>';
         return;
       }
 
-      const nq = norm(q);
-      let out;
+      const search = norm(q.trim());
+      let out = [];
 
-      if (nq === "") {
+      if (search === "") {
         out = DATA.slice(0, 50);
       } else {
-        const exact = DATA.filter(r => norm(r.municipio) === nq);
+        const exact = DATA.filter(r => norm(r.municipio) === search);
+
         if (exact.length) {
           out = exact;
         } else {
-          out = DATA.filter(r => norm(r.municipio).includes(nq)).slice(0, 50);
+          out = DATA.filter(r =>
+            norm(r.municipio).includes(search)
+          ).slice(0, 50);
         }
       }
 
       if (!out.length) {
-        box.innerHTML = '<div class="row">Nenhum município encontrado com esse nome.</div>';
+        box.innerHTML =
+          '<div class="row">Nenhum município encontrado com esse nome.</div>';
         return;
       }
 
       for (const r of out) {
-        const row = document.createElement('div');
-        row.className = 'row';
+        const row = document.createElement("div");
+        row.className = "row";
         row.innerHTML = `
           <div>
             <div class="muni">${r.municipio}</div>
@@ -215,7 +238,9 @@
           <div class="codigo" aria-label="Código IBGE">${r.codigo}</div>
           <button class="copy" aria-label="Copiar código">Copiar</button>
         `;
-        row.querySelector('button.copy').addEventListener('click', () => copyCode(r));
+        row
+          .querySelector("button.copy")
+          .addEventListener("click", () => copyCode(r));
         box.appendChild(row);
       }
     }
@@ -223,35 +248,42 @@
     async function copyCode(rec) {
       try {
         await navigator.clipboard.writeText(rec.codigo);
-        toast('Código ' + rec.codigo + ' copiado');
+        toast("Código " + rec.codigo + " copiado");
       } catch {
-        toast('Não foi possível copiar automaticamente');
+        toast("Falha ao copiar automaticamente");
       }
     }
 
     function toast(msg) {
-      const t = document.getElementById('toast');
-      t.querySelector('div').textContent = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 1400);
+      const t = document.getElementById("toast");
+      t.querySelector("div").textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 1400);
     }
 
-    const input = document.getElementById('q');
-    input.addEventListener('input', deb(e => render(e.target.value)));
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const box = document.getElementById('results');
-        const first = box.querySelector('.row .codigo');
-        if (first) {
-          const code = first.textContent.trim();
-          navigator.clipboard.writeText(code).then(() => toast('Código ' + code + ' copiado'));
+    document
+      .getElementById("q")
+      .addEventListener("input", deb(e => render(e.target.value)));
+    document
+      .getElementById("q")
+      .addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const first = document.querySelector(
+            "#results .row .codigo"
+          );
+          if (first) {
+            navigator.clipboard
+              .writeText(first.textContent.trim())
+              .then(() => toast("Código " + first.textContent.trim() + " copiado"));
+          }
         }
-      }
-    });
+      });
 
-    document.getElementById('downloadJson').href = 'ibge_municipios.json';
-    document.getElementById('downloadCsv').href = 'ibge_municipios.csv';
+    document.getElementById("downloadJson").href =
+      "ibge_municipios.json";
+    document.getElementById("downloadCsv").href =
+      "ibge_municipios.csv";
 
     load();
   </script>
