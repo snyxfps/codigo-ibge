@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IBGE – Códigos de Municípios</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif;margin:0;line-height:1.35;background:#0b1020;color:#e7e9ee}
+    .wrap{max-width:980px;margin:0 auto;padding:32px}
+    h1{font-size:24px;margin-bottom:20px}
+    .card{background:#121832;border:1px solid #1f2947;border-radius:16px}
+    .search{padding:14px 16px;border-bottom:1px solid #1f2947;position:relative}
+    .search input{width:100%;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid #2b355a;background:#0d142b;color:#fff;outline:none}
+    .history{position:absolute;top:100%;left:0;right:0;background:#121832;border:1px solid #2b355a;border-radius:0 0 12px 12px;z-index:10;max-height:180px;overflow-y:auto;display:none}
+    .history-item{padding:10px 14px;cursor:pointer}
+    .history-item:hover{background:#0d142b}
+    .results{padding:8px 6px}
+    .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px 10px;border-radius:12px}
+    .row:hover{background:#0d142b}
+    .muni{font-weight:600}
+    .estado{opacity:.9}
+    .codigo{font-variant-numeric:tabular-nums;background:#0d142b;border:1px solid #2b355a;border-radius:10px;padding:8px 10px;cursor:pointer}
+    button.copy{border:1px solid #2b355a;background:#121a38;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer}
+    button.copy:hover{border-color:#3e63ff}
+    .toast{position:fixed;inset:auto 0 20px 0;display:flex;justify-content:center;pointer-events:none}
+    .toast > div{background:#0f1a33;color:#d8e2ff;padding:10px 14px;border-radius:12px;border:1px solid #2b355a;box-shadow:0 8px 30px rgba(0,0,0,.08);opacity:0;transform:translateY(20px);transition:.25s}
+    .toast.show > div{opacity:1;transform:translateY(0)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>IBGE – Busca de Códigos por Município</h1>
+
+    <div class="card">
+      <div class="search">
+        <input id="q" type="search" placeholder="Digite o nome da cidade…" autocomplete="off" autofocus />
+        <div id="history" class="history"></div>
+      </div>
+      <div id="results" class="results"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><div>Copiado!</div></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getDatabase, ref, push, query, limitToLast, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_iMLsYqZ_4t0JfetDuqLnirDgAcZyMBc",
+      authDomain: "ibge-3239d.firebaseapp.com",
+      databaseURL: "https://ibge-3239d-default-rtdb.firebaseio.com",
+      projectId: "ibge-3239d",
+      storageBucket: "ibge-3239d.firebasestorage.app",
+      messagingSenderId: "126496110602",
+      appId: "1:126496110602:web:d2e183a8371685247187f3"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const norm = s => (s||"").normalize("NFD").replace(/\p{Diacritic}+/gu,"").toLowerCase();
+    let DATA = [];
+
+    async function load(){
+      try{
+        const res = await fetch('ibge_municipios.json');
+        DATA = await res.json();
+      }catch(e){
+        console.error('Falha ao carregar dados', e);
+      }
+      render("");
+    }
+
+    function render(q){
+      const box = document.getElementById('results');
+      box.innerHTML = '';
+      if(!DATA.length){ box.innerHTML = '<div class="row">Dados não carregados.</div>'; return; }
+      const nq = norm(q);
+      if(!nq){ box.innerHTML = '<div class="row">Digite para pesquisar.</div>'; return; }
+      const out = DATA.filter(r => norm(r.municipio).includes(nq)).slice(0, 50);
+      if(!out.length){ box.innerHTML = '<div class="row">Nenhum resultado.</div>'; return; }
+      for(const r of out){
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <div>
+            <div class="muni">${r.municipio}</div>
+            <div class="estado">${r.estado}</div>
+          </div>
+          <div class="codigo">${r.codigo}</div>
+          <button class="copy">Copiar</button>
+        `;
+        row.querySelector('button.copy').addEventListener('click', ()=>copyCode(r));
+        row.querySelector('.codigo').addEventListener('click', ()=>copyCode(r));
+        box.appendChild(row);
+      }
+      // salvar no histórico do Firebase
+      saveHistory(q);
+    }
+
+    async function copyCode(rec){
+      try{
+        await navigator.clipboard.writeText(rec.codigo);
+        toast('Código '+rec.codigo+' copiado');
+      }catch{
+        toast('Não foi possível copiar');
+      }
+    }
+
+    function toast(msg){
+      const t = document.getElementById('toast');
+      t.querySelector('div').textContent = msg;
+      t.classList.add('show');
+      setTimeout(()=>t.classList.remove('show'), 1400);
+    }
+
+    const input = document.getElementById('q');
+    const historyBox = document.getElementById('history');
+
+    input.addEventListener('input', e=>render(e.target.value));
+    input.addEventListener('focus', ()=>loadHistory());
+
+    // === Firebase: salvar e carregar histórico ===
+    function saveHistory(term){
+      if(!term) return;
+      const histRef = ref(db, 'historico');
+      push(histRef, { termo: term, ts: Date.now() });
+    }
+
+    function loadHistory(){
+      const histRef = query(ref(db, 'historico'), limitToLast(5));
+      onValue(histRef, snap => {
+        const val = snap.val();
+        historyBox.innerHTML = '';
+        if(val){
+          const items = Object.values(val).reverse();
+          items.forEach(h => {
+            const div = document.createElement('div');
+            div.className = 'history-item';
+            div.textContent = h.termo;
+            div.addEventListener('click', ()=>{
+              input.value = h.termo;
+              render(h.termo);
+              historyBox.style.display='none';
+            });
+            historyBox.appendChild(div);
+          });
+          historyBox.style.display = 'block';
+        }else{
+          historyBox.style.display = 'none';
+        }
+      }, {onlyOnce:true});
+    }
+
+    load();
+  </script>
+</body>
+</html>
