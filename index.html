@@ -3,15 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IBGE – Códigos de Municípios</title>
+  <title>IBGE – Busca de Códigos por Município</title>
   <style>
-    :root {
-      --radius: 16px;
-      --shadow: 0 8px 30px rgba(0, 0, 0, .08);
-    }
+    :root { --radius: 16px; --shadow: 0 8px 30px rgba(0, 0, 0, .08); }
     * { box-sizing: border-box }
     body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Inter, Ubuntu, Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Ubuntu, Arial, sans-serif;
       margin: 0;
       line-height: 1.35;
       background: #0b1020;
@@ -135,16 +132,8 @@
 
     <div class="card">
       <div class="search">
-        <input
-          id="q"
-          type="search"
-          placeholder="Digite o nome da cidade…"
-          autocomplete="off"
-          autofocus
-        />
-        <div class="hint">
-          Digite para pesquisar. Se existir correspondência exata, só ela aparece.
-        </div>
+        <input id="q" type="search" placeholder="Digite o nome da cidade…" autocomplete="off" autofocus />
+        <div class="hint">Digite o nome exato do município. Após 1 segundo sem digitar, o filtro será aplicado.</div>
       </div>
       <div id="results" class="results" role="listbox" aria-label="Resultados"></div>
       <div class="footer">
@@ -161,35 +150,21 @@
   <div class="toast" id="toast"><div>Copiado!</div></div>
 
   <script>
-    const deb = (fn, ms = 120) => {
-      let t;
-      return (...args) => {
-        clearTimeout(t);
-        t = setTimeout(() => fn(...args), ms);
-      };
-    };
     const norm = s =>
-      (s || "")
-        .normalize("NFD")
-        .replace(/\p{Diacritic}+/gu, "")
-        .toLowerCase();
+      (s || "").normalize("NFD").replace(/\p{Diacritic}+/gu, "").toLowerCase();
 
     let DATA = [];
+    let timeout;
+
     async function load() {
       try {
         const res = await fetch("ibge_municipios.json");
         if (!res.ok) throw new Error("fetch-failed");
         DATA = await res.json();
       } catch {
-        console.warn(
-          "Falha ao carregar ibge_municipios.json. Rode via servidor local."
-        );
-        document
-          .querySelector(".footer")
-          .insertAdjacentHTML(
-            "beforeend",
-            '<div style="opacity:.8">Dica: use Live Server ou http-server.</div>'
-          );
+        console.warn("Falha ao carregar ibge_municipios.json.");
+        document.querySelector(".footer").insertAdjacentHTML("beforeend",
+          '<div style="opacity:.8">Dica: use Live Server ou http-server para carregar o JSON.</div>');
       }
       render("");
     }
@@ -199,8 +174,7 @@
       box.innerHTML = "";
 
       if (!DATA.length) {
-        box.innerHTML =
-          '<div class="row">Dados não carregados. Hospede JSON junto ao HTML.</div>';
+        box.innerHTML = '<div class="row">Dados não carregados.</div>';
         return;
       }
 
@@ -211,19 +185,13 @@
         out = DATA.slice(0, 50);
       } else {
         const exact = DATA.filter(r => norm(r.municipio) === search);
-
-        if (exact.length) {
-          out = exact;
-        } else {
-          out = DATA.filter(r =>
-            norm(r.municipio).includes(search)
-          ).slice(0, 50);
-        }
+        out = exact.length
+          ? exact
+          : DATA.filter(r => norm(r.municipio).includes(search)).slice(0, 50);
       }
 
       if (!out.length) {
-        box.innerHTML =
-          '<div class="row">Nenhum município encontrado com esse nome.</div>';
+        box.innerHTML = '<div class="row">Nenhum município encontrado.</div>';
         return;
       }
 
@@ -235,12 +203,10 @@
             <div class="muni">${r.municipio}</div>
             <div class="estado">${r.estado}</div>
           </div>
-          <div class="codigo" aria-label="Código IBGE">${r.codigo}</div>
-          <button class="copy" aria-label="Copiar código">Copiar</button>
+          <div class="codigo">${r.codigo}</div>
+          <button class="copy">Copiar</button>
         `;
-        row
-          .querySelector("button.copy")
-          .addEventListener("click", () => copyCode(r));
+        row.querySelector("button.copy").addEventListener("click", () => copyCode(r));
         box.appendChild(row);
       }
     }
@@ -250,7 +216,7 @@
         await navigator.clipboard.writeText(rec.codigo);
         toast("Código " + rec.codigo + " copiado");
       } catch {
-        toast("Falha ao copiar automaticamente");
+        toast("Falha ao copiar");
       }
     }
 
@@ -261,31 +227,25 @@
       setTimeout(() => t.classList.remove("show"), 1400);
     }
 
-    document
-      .getElementById("q")
-      .addEventListener("input", deb(e => render(e.target.value)));
-    document
-      .getElementById("q")
-      .addEventListener("keydown", e => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          const first = document.querySelector(
-            "#results .row .codigo"
+    document.getElementById("q").addEventListener("input", e => {
+      clearTimeout(timeout);
+      const val = e.target.value;
+      timeout = setTimeout(() => render(val), 1000);
+    });
+
+    document.getElementById("q").addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const first = document.querySelector("#results .row .codigo");
+        if (first) {
+          navigator.clipboard.writeText(first.textContent.trim()).then(() =>
+            toast("Código " + first.textContent.trim() + " copiado")
           );
-          if (first) {
-            navigator.clipboard
-              .writeText(first.textContent.trim())
-              .then(() => toast("Código " + first.textContent.trim() + " copiado"));
-          }
         }
-      });
+      }
+    });
 
-    document.getElementById("downloadJson").href =
-      "ibge_municipios.json";
-    document.getElementById("downloadCsv").href =
-      "ibge_municipios.csv";
-
-    load();
+    window.addEventListener("load", load);
   </script>
 </body>
 </html>
